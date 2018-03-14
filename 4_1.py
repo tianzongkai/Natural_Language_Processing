@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import json
+import types
 import timeit
 
 def read_original_count_file(count_file):
@@ -32,3 +34,25 @@ def read_original_count_file(count_file):
     #rare_words = np.char.add(np.char.add(words[counts[:,0]<5][:,0], ' ') ,words[counts[:, 0] < 5][:, 1])
     #print 'rare_words lenth', len(rare_words)
     return rare_words
+
+def edit_training_file():
+    rare_words_list = read_original_count_file("cfg.counts")
+    def modify_leaf(tree):
+        for idx, item in enumerate(tree):
+            if idx != 0:
+                if isinstance(item, types.ListType):
+                    modify_leaf(item)
+                else:
+                    if item in rare_words_list:
+                        tree[idx] = '_RARE_'
+        return tree
+
+    newf = open('parse_train_rare.dat', 'w+')
+    with open("parse_train.dat") as f:
+        for line in f:
+            tree = json.loads(line)
+            modified_tree = modify_leaf(tree)
+            newf.write(str(modified_tree) + '\n')
+    newf.close()
+
+edit_training_file()
