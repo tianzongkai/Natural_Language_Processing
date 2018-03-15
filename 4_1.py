@@ -1,3 +1,12 @@
+#! /usr/bin/python
+"""
+replace low-frequency words in training file with '_RARE_'
+and generate new training file - 'parse_train_rare.dat'
+
+then execute
+python count_cfg_freq.py parse_train_rare.dat > cfg_rare.counts
+to generate new count file
+"""
 import os
 import numpy as np
 import json
@@ -26,13 +35,14 @@ def read_original_count_file(count_file):
     #print counts
     words = word_counts[:, 1]
     rare_words = []
+    total_rare = 0
     for w in words:
         word_sum = np.sum(counts[words[:] == w])
         #if w == 'Medical' :print 'medical counts', word_sum
         if word_sum < 5 and w not in rare_words:
+            total_rare += word_sum
             rare_words.append(w)
-    #rare_words = np.char.add(np.char.add(words[counts[:,0]<5][:,0], ' ') ,words[counts[:, 0] < 5][:, 1])
-    #print 'rare_words lenth', len(rare_words)
+    print 'rare words appear %r times' % total_rare
     return rare_words
 
 def edit_training_file():
@@ -64,4 +74,5 @@ def edit_training_file():
             modified_tree = modify_leaf(tree)
             newf.write(str(json.dumps(modified_tree)) + '\n')
     newf.close()
-edit_training_file()
+# edit_training_file()
+read_original_count_file("cfg.counts")
