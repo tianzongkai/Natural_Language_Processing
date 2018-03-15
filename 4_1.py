@@ -36,8 +36,18 @@ def read_original_count_file(count_file):
     return rare_words
 
 def edit_training_file():
+    """
+    replace rare words with '_RARE_'
+    :return:
+    """
     rare_words_list = read_original_count_file("cfg.counts")
     def modify_leaf(tree):
+        """
+        recursivly find the leaf level terminal words in a tree
+        and replace it with "_RARE_" if the word is a rare word
+        :param tree: a parse tree
+        :return: the tree with low-frequency leaf words modified
+        """
         for idx, item in enumerate(tree):
             if idx != 0:
                 if isinstance(item, types.ListType):
@@ -52,7 +62,6 @@ def edit_training_file():
         for line in f:
             tree = json.loads(line)
             modified_tree = modify_leaf(tree)
-            newf.write(str(modified_tree) + '\n')
+            newf.write(str(json.dumps(modified_tree)) + '\n')
     newf.close()
-
 edit_training_file()
