@@ -13,7 +13,7 @@ import json
 import types
 import timeit
 
-def read_original_count_file(count_file):
+def create_rare_word_list_from_training_file(count_file):
     """
     read count file and return a list of rare words
     :param count_file: files created by run command line:
@@ -50,7 +50,7 @@ def edit_training_file():
     replace rare words with '_RARE_'
     :return:
     """
-    rare_words_list = read_original_count_file("cfg.counts")
+    rare_words_list = create_rare_word_list_from_training_file("cfg.counts")
     def modify_leaf(tree):
         """
         recursivly find the leaf level terminal words in a tree
@@ -75,4 +75,4 @@ def edit_training_file():
             newf.write(str(json.dumps(modified_tree)) + '\n')
     newf.close()
 # edit_training_file()
-read_original_count_file("cfg.counts")
+create_rare_word_list_from_training_file("cfg.counts")
