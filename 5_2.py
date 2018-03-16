@@ -9,8 +9,9 @@ import os
 import numpy as np
 import math
 import copy
+import itertools
 
-def create_rare_word_list_from_training_file(count_file):
+def create_frequent_word_list_from_training_file(count_file):
     """
     read count file and return a list of rare words
     :param count_file: files created by run command line:
@@ -22,8 +23,8 @@ def create_rare_word_list_from_training_file(count_file):
         for line in f:
             thisline = line.split()
             if thisline[1] == 'UNARYRULE':
-                lines.append(thisline[0])  #count
-                lines.append(thisline[3])  #word
+                lines.append(thisline[0])  # count
+                lines.append(thisline[3])  # word
                 lines.append(thisline[2])  # Part-of-speech tag
 
     word_counts = np.asarray(lines)
@@ -31,16 +32,16 @@ def create_rare_word_list_from_training_file(count_file):
     counts = word_counts[:,0].astype('int')
     #print counts
     words = word_counts[:, 1]
-    rare_words = []
+    frequent_words = []
     total_rare = 0
     for w in words:
-        word_sum = np.sum(counts[words[:] == w])
-        #if w == 'Medical' :print 'medical counts', word_sum
-        if word_sum < 5 and w not in rare_words:
-            total_rare += word_sum
-            rare_words.append(w)
-    print 'rare words appear %r times' % total_rare
-    return rare_words
+        word_count = np.sum(counts[words[:] == w])
+        #if w == 'Medical' :print 'medical counts', word_count
+        if word_count >= 5 and w not in frequent_words:
+            # total_rare += word_count
+            frequent_words.append(w)
+    # print 'rare words appear %r times' % total_rare
+    return frequent_words
 
 def create_counts_iterator(count_file):
     """
@@ -125,46 +126,71 @@ def init_memo_dict(n, parameters):
     return memo_dict
 
 def pi(i, j, x, sentence, parameters, memo_dict):
-    print 'i, j, x: ', i, j, x
+    # print 'i, j, x: ', i, j, x
+    # print memo_dict
     if i == j:
         w = sentence[i]
         if x in parameters and w in parameters[x]:
-            print '11'
+            # print '11: ', parameters[x][w]
             return parameters[x][w]
         else:
-            print '22'
+            # print '22'
             return 0.0
     else:
         if memo_dict[i][j][x] >= 0:
-            print '33'
+            # print '33: ', memo_dict[i][j][x]
             return memo_dict[i][j][x]
         else:
-            print '44'
+            # print '44'
             rules = parameters[x].keys()
             binary_rules = filter(lambda x: len(x.split()) == 2, rules)
-            print binary_rules
-            memo_dict[i][j][x] = \
-                max([[parameters[x][r]
-                      * pi(i, s, r.split()[0], sentence, parameters, memo_dict)
-                      * pi(s + 1, j, r.split()[1], sentence, parameters, memo_dict)
-                      for s in range(i, j)]
-                    for r in binary_rules])
+            # print binary_rules
+            if binary_rules == []:
+                memo_dict[i][j][x] = 0.0
+            else:
+                memo_dict[i][j][x] = \
+                    max(list(itertools.chain.from_iterable(
+                        [[parameters[x][r]
+                          * pi(i, s, r.split()[0], sentence, parameters, memo_dict)
+                          * pi(s + 1, j, r.split()[1], sentence, parameters, memo_dict)
+                          for s in range(i, j)]
+                        for r in binary_rules]))
+                    )
+            # print 'memo of %r, %r, %r: %r' % (i, j, x, memo_dict[i][j][x])
             return memo_dict[i][j][x]
-
 
 if __name__ == "__main__":
     para_dict = calculate_parameter()
-    rare_words_list = create_rare_word_list_from_training_file("cfg.counts")
-    s = ['', 'limited', '_RARE_', '.']
+    frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
+    # print frequent_words
+    # print len(frequent_words)
+    # s = ['', 'book', 'tickets', '.']
+    # for i in range(1, len(s)):
+    #     if s[i] not in frequent_words:
+    #         s[i] = '_RARE_'
+    # print s
+    # n = len(s) - 1
 
-    n = len(s) - 1
-    print n
-    memo_dict = init_memo_dict(n, para_dict)
-    # print len(memo_dict[1][3].keys())
-    # print memo_dict
-    pi = pi(1, n, 'S', s, para_dict, memo_dict)
-    print pi
-    # sentense_iterator = create_sentence_iterator('parse_dev.dat')
-    # for s in sentense_iterator:
-    #     print s
+    # print n
+    # prob = -2.0
+    # memo_dict = init_memo_dict(n, para_dict)
+    # prob = pi(1, n, 'S', s, para_dict, memo_dict)
+    # print prob
+    sentense_iterator = create_sentence_iterator('parse_dev.dat')
+    total_s = 0
+    total_not_s = 0
+    for s in sentense_iterator:
+        total_s += 1
+        n = len(s) - 1
+        for i in range(1, n + 1):
+            if s[i] not in frequent_words:
+                s[i] = '_RARE_'
+        memo_dict = init_memo_dict(n, para_dict)
+        prob = pi(1, n, 'S', s, para_dict, memo_dict)
+        if prob == 0:
+            total_not_s += 1
+        print prob
+    print "total_s:", total_s
+    print 'total_not_s', total_not_s
+
 
