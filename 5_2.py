@@ -106,6 +106,7 @@ def create_sentence_iterator(corpus_file):
             line.insert(0, '')
             yield line
             l = f.readline()
+
 def cky_algorithm(sentence, parameters):
     n = len(sentence) - 1
     base_case_pi = {}
@@ -116,6 +117,7 @@ def cky_algorithm(sentence, parameters):
             for x in parameters:
                 if x != 'S':
                     pass
+
 def init_memo_dict(n, parameters):
     memo_dict = {}
     for i in range(1, n):
@@ -126,7 +128,7 @@ def init_memo_dict(n, parameters):
                 memo_dict[i][j][x] = -1.0
     return memo_dict
 
-def pi(i, j, x, sentence, parameters, memo_dict):
+def pi(i, j, x, sentence, parameters, memo_pi_dict, memo_bp_dict):
     """
     implementation of PCFG algorithm
     :param i: start index
@@ -134,7 +136,7 @@ def pi(i, j, x, sentence, parameters, memo_dict):
     :param x: non-terminals for left-hand side of rule
     :param sentence: a sentence to parse
     :param parameters: q(X -> Y1Y2) and q(x -> w), probability of each rule
-    :param memo_dict: lookup dictionary for calculated pi values; {i: {j: {X: prob}}}
+    :param memo_pi_dict: lookup dictionary for calculated pi values; {i: {j: {X: prob}}}
     :return: pi value for the given input
     """
     # print 'i, j, x: ', i, j, x
@@ -143,14 +145,15 @@ def pi(i, j, x, sentence, parameters, memo_dict):
         w = sentence[i]
         if x in parameters and w in parameters[x]:
             # print '11: ', parameters[x][w]
+            # print w, x
             return parameters[x][w]
         else:
             # print '22'
             return 0.0
     else:
-        if memo_dict[i][j][x] >= 0:
+        if memo_pi_dict[i][j][x] >= 0:
             # print '33: ', memo_dict[i][j][x]
-            return memo_dict[i][j][x]
+            return memo_pi_dict[i][j][x]
         else:
             # print '44'
             # list of righ-hand side of binary & unary rules
@@ -159,58 +162,59 @@ def pi(i, j, x, sentence, parameters, memo_dict):
             binary_rules = filter(lambda x: len(x.split()) == 2, rules) # Y1, Y2
             # print binary_rules
             if binary_rules == []: # there's no binary rule under input X
-                memo_dict[i][j][x] = 0.0
+                memo_pi_dict[i][j][x] = 0.0
             else:
                 sub_pi_matrix = np.asarray(
                     [[parameters[x][r]
-                      * pi(i, s, r.split()[0], sentence, parameters, memo_dict)
-                      * pi(s + 1, j, r.split()[1], sentence, parameters, memo_dict)
+                      * pi(i, s, r.split()[0], sentence, parameters, memo_pi_dict)
+                      * pi(s + 1, j, r.split()[1], sentence, parameters, memo_pi_dict)
                       for s in range(i, j)]
                      for r in binary_rules]
                 )
-                memo_dict[i][j][x] = np.amax(sub_pi_matrix)
+                memo_pi_dict[i][j][x] = np.amax(sub_pi_matrix)
                 argmax_idx = np.argmax(sub_pi_matrix) # index of max value in flatten sub_pi matrix
                 argmax_s = i + argmax_idx % (j - i)   # value of s to get max value of pi
                 argmax_r = binary_rules[argmax_idx / (j - i)] # get the rule that gives max value of pi
+                print i, argmax_s, j, argmax_r
             # print 'memo of %r, %r, %r: %r' % (i, j, x, memo_dict[i][j][x])
-            return memo_dict[i][j][x]
+            return memo_pi_dict[i][j][x]
 
 if __name__ == "__main__":
     start =time.time()
     para_dict = calculate_parameter()
     frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
-    # print frequent_words
-    # print len(frequent_words)
-    # s = ['', 'book', 'tickets', '.']
-    # for i in range(1, len(s)):
-    #     if s[i] not in frequent_words:
-    #         s[i] = '_RARE_'
-    # print s
-    # n = len(s) - 1
+    s = ['', 'I', 'love', "'em", 'both', '.']
+    for i in range(1, len(s)):
+        if s[i] not in frequent_words:
+            s[i] = '_RARE_'
+    print s
+    n = len(s) - 1
+    prob = -2.0
+    memo_pi_dict = init_memo_dict(n, para_dict)
+    memo_bp_dict = copy.deepcopy(memo_pi_dict)
+    prob = pi(1, n, 'S', s, para_dict, memo_pi_dict, memo_bp_dict)
+    print prob
 
-    # print n
-    # prob = -2.0
-    # memo_dict = init_memo_dict(n, para_dict)
-    # prob = pi(1, n, 'S', s, para_dict, memo_dict)
-    # print prob
-    sentense_iterator = create_sentence_iterator('parse_dev.dat')
-    total_s = 0
-    total_not_s = 0
-    for s in sentense_iterator:
-        total_s += 1
-        n = len(s) - 1
-        for i in range(1, n + 1):
-            if s[i] not in frequent_words:
-                s[i] = '_RARE_'
-        memo_dict = init_memo_dict(n, para_dict)
-        prob = pi(1, n, 'S', s, para_dict, memo_dict)
-        if prob == 0.0:
-            prob = max([pi(1, n, x, s, para_dict, memo_dict) for x in para_dict.keys()])
-            total_not_s += 1
-        # print prob
-    print "total_s:", total_s
-    print 'total_not_s', total_not_s
-    end = time.time()
-    print "running time %r s" % (end-start)
+
+
+    # sentense_iterator = create_sentence_iterator('parse_dev.dat')
+    # total_s = 0
+    # total_not_s = 0
+    # for s in sentense_iterator:
+    #     total_s += 1
+    #     n = len(s) - 1
+    #     for i in range(1, n + 1):
+    #         if s[i] not in frequent_words:
+    #             s[i] = '_RARE_'
+    #     memo_dict = init_memo_dict(n, para_dict)
+    #     prob = pi(1, n, 'S', s, para_dict, memo_dict)
+    #     if prob == 0.0:
+    #         prob = max([pi(1, n, x, s, para_dict, memo_dict) for x in para_dict.keys()])
+    #         total_not_s += 1
+    #     # print prob
+    # print "total_s:", total_s
+    # print 'total_not_s', total_not_s
+    # end = time.time()
+    # print "running time %r s" % (end-start)
 
 
