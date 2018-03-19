@@ -10,6 +10,7 @@ import numpy as np
 import math
 import copy
 import itertools
+import time
 
 def create_frequent_word_list_from_training_file(count_file):
     """
@@ -126,6 +127,16 @@ def init_memo_dict(n, parameters):
     return memo_dict
 
 def pi(i, j, x, sentence, parameters, memo_dict):
+    """
+    implementation of PCFG algorithm
+    :param i: start index
+    :param j: end index
+    :param x: non-terminals for left-hand side of rule
+    :param sentence: a sentence to parse
+    :param parameters: q(X -> Y1Y2) and q(x -> w), probability of each rule
+    :param memo_dict: lookup dictionary for calculated pi values; {i: {j: {X: prob}}}
+    :return: pi value for the given input
+    """
     # print 'i, j, x: ', i, j, x
     # print memo_dict
     if i == j:
@@ -142,24 +153,30 @@ def pi(i, j, x, sentence, parameters, memo_dict):
             return memo_dict[i][j][x]
         else:
             # print '44'
+            # list of righ-hand side of binary & unary rules
+            # binary rules are in the format of 'Y1 Y2'
             rules = parameters[x].keys()
-            binary_rules = filter(lambda x: len(x.split()) == 2, rules)
+            binary_rules = filter(lambda x: len(x.split()) == 2, rules) # Y1, Y2
             # print binary_rules
-            if binary_rules == []:
+            if binary_rules == []: # there's no binary rule under input X
                 memo_dict[i][j][x] = 0.0
             else:
-                memo_dict[i][j][x] = \
-                    max(list(itertools.chain.from_iterable(
-                        [[parameters[x][r]
-                          * pi(i, s, r.split()[0], sentence, parameters, memo_dict)
-                          * pi(s + 1, j, r.split()[1], sentence, parameters, memo_dict)
-                          for s in range(i, j)]
-                        for r in binary_rules]))
-                    )
+                sub_pi_matrix = np.asarray(
+                    [[parameters[x][r]
+                      * pi(i, s, r.split()[0], sentence, parameters, memo_dict)
+                      * pi(s + 1, j, r.split()[1], sentence, parameters, memo_dict)
+                      for s in range(i, j)]
+                     for r in binary_rules]
+                )
+                memo_dict[i][j][x] = np.amax(sub_pi_matrix)
+                argmax_idx = np.argmax(sub_pi_matrix) # index of max value in flatten sub_pi matrix
+                argmax_s = i + argmax_idx % (j - i)   # value of s to get max value of pi
+                argmax_r = binary_rules[argmax_idx / (j - i)] # get the rule that gives max value of pi
             # print 'memo of %r, %r, %r: %r' % (i, j, x, memo_dict[i][j][x])
             return memo_dict[i][j][x]
 
 if __name__ == "__main__":
+    start =time.time()
     para_dict = calculate_parameter()
     frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
     # print frequent_words
@@ -187,10 +204,13 @@ if __name__ == "__main__":
                 s[i] = '_RARE_'
         memo_dict = init_memo_dict(n, para_dict)
         prob = pi(1, n, 'S', s, para_dict, memo_dict)
-        if prob == 0:
+        if prob == 0.0:
+            prob = max([pi(1, n, x, s, para_dict, memo_dict) for x in para_dict.keys()])
             total_not_s += 1
-        print prob
+        # print prob
     print "total_s:", total_s
     print 'total_not_s', total_not_s
+    end = time.time()
+    print "running time %r s" % (end-start)
 
 
