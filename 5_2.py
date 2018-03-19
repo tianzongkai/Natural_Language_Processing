@@ -12,7 +12,7 @@ import copy
 import itertools
 import re
 import time
-import json
+import json, pprint
 
 def create_frequent_word_list_from_training_file(count_file):
     """
@@ -222,45 +222,70 @@ def parse_corpus():
         # print prob
     newf.close()
 
+def testing():
+    para_dict = calculate_parameter()
+    # print para_dict
+    frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
+    s = ['', 'The', 'complicated', 'language', 'in', 'the', 'huge',
+         'new', 'law', 'has', 'muddied', 'the', 'fight', '.']
+    for i in range(1, len(s)):
+        if s[i] not in frequent_words:
+            s[i] = '_RARE_'
+    print s
+    n = len(s) - 1
+    prob = -2.0
+    memo_pi_dict = init_memo_dict(n, para_dict)
+    memo_bp_dict = copy.deepcopy(memo_pi_dict)
+    prob = pi(1, n, 'S', s, para_dict, memo_pi_dict, memo_bp_dict)
+    print 'prob,', prob
+    tree = ['']
+    if memo_pi_dict[1][n]['S'] != 0:
+        tree= str(['S', build_parse_tree(s, 1, n, 'S', memo_bp_dict)])
+        tree = re.sub(r"(?<!\')(\(|\))(?!\')", "", tree)
+        tree = re.sub("'", "\"", tree)
+        s = json.loads(tree)
+        pretty_print_tree(s)
+    else:
+        max_pi = -1.0
+        x = 'X'
+        for key in memo_pi_dict[1][n]:
+            pi_value = memo_pi_dict[1][n][key]
+            if pi_value > max_pi:
+                max_pi = pi_value
+                x = key
+        tree = [x, build_parse_tree(s, 1, n, x, memo_bp_dict)]
+    print 'tree:', tree
+
+
+class Node:
+  """
+  Dummy class for python's pretty printer.
+  """
+  def __init__(self, name): self.name = name
+  def __repr__(self): return self.name
+
+def format_tree(tree):
+  """
+  Convert a tree with strings, to one with nodes.
+  """
+  tree[0] = Node(tree[0])
+  if len(tree) == 2:
+    tree[1] = Node(tree[1])
+  elif len(tree) == 3:
+    format_tree(tree[1])
+    format_tree(tree[2])
+
+def pretty_print_tree(tree):
+  """
+  Print out a tree with nice formatting.
+  """
+  format_tree(tree)
+  print pprint.pformat(tree)
+
 if __name__ == "__main__":
     start =time.time()
-    # para_dict = calculate_parameter()
-    # # print para_dict
-    # frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
-    # s = ['', 'I', 'love', "'em", 'both', '.']
-    # for i in range(1, len(s)):
-    #     if s[i] not in frequent_words:
-    #         s[i] = '_RARE_'
-    # print s
-    # n = len(s) - 1
-    # prob = -2.0
-    # memo_pi_dict = init_memo_dict(n, para_dict)
-    # memo_bp_dict = copy.deepcopy(memo_pi_dict)
-    # prob = pi(1, n, 'S', s, para_dict, memo_pi_dict, memo_bp_dict)
-    # tree = ['']
-    # if memo_pi_dict[1][n]['S'] != 0:
-    #     tree= str(['S', build_parse_tree(s, 1, n, 'S', memo_bp_dict)])
-    #     tree = re.sub(r"(?<!\')(\(|\))(?!\')", "", tree)
-    #     tree = re.sub("'", "\"", tree)
-    #     # s = json.loads(tree)
-    #     # print s[1][1]
-    #     # re.match(r"\d(\d)?:\d\d(.\d+)?$", w)
-    # else:
-    #     max_pi = -1.0
-    #     x = 'X'
-    #     for key in memo_pi_dict[1][n]:
-    #         pi_value = memo_pi_dict[1][n][key]
-    #         if pi_value > max_pi:
-    #             max_pi = pi_value
-    #             x = key
-    #     tree = [x, build_parse_tree(s, 1, n, x, memo_bp_dict)]
-    #
-    # print 'tree:', tree
-    # print memo_pi_dict[1][n]['S']
-    # print memo_bp_dict[1][n]['S']
-
+    # testing()
     parse_corpus()
-
     end = time.time()
     print "running time %r s" % (end-start)
 
