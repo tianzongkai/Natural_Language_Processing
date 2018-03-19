@@ -166,8 +166,8 @@ def pi(i, j, x, sentence, parameters, memo_pi_dict, memo_bp_dict):
             else:
                 sub_pi_matrix = np.asarray(
                     [[parameters[x][r]
-                      * pi(i, s, r.split()[0], sentence, parameters, memo_pi_dict)
-                      * pi(s + 1, j, r.split()[1], sentence, parameters, memo_pi_dict)
+                      * pi(i, s, r.split()[0], sentence, parameters, memo_pi_dict, memo_bp_dict)
+                      * pi(s + 1, j, r.split()[1], sentence, parameters, memo_pi_dict, memo_bp_dict)
                       for s in range(i, j)]
                      for r in binary_rules]
                 )
@@ -175,13 +175,36 @@ def pi(i, j, x, sentence, parameters, memo_pi_dict, memo_bp_dict):
                 argmax_idx = np.argmax(sub_pi_matrix) # index of max value in flatten sub_pi matrix
                 argmax_s = i + argmax_idx % (j - i)   # value of s to get max value of pi
                 argmax_r = binary_rules[argmax_idx / (j - i)] # get the rule that gives max value of pi
-                print i, argmax_s, j, argmax_r
+                memo_bp_dict[i][j][x] = [argmax_s, argmax_r]
+                # print i, argmax_s, j, argmax_r
             # print 'memo of %r, %r, %r: %r' % (i, j, x, memo_dict[i][j][x])
             return memo_pi_dict[i][j][x]
+
+def build_parse_tree(sentence, i, j, x, bp_dict):
+    if i == j:
+        return sentence[i]
+    bp = bp_dict[i][j][x]
+    s = bp[0]
+    rule_left = bp[1].split()[0]
+    rule_right = bp[1].split()[1]
+    # if s == i:
+    #     return [rule_left, sentence[i]],\
+    #            [rule_right, build_parse_tree(sentence, s+1, j, rule_right, bp_dict)]
+    #
+    # elif s == j:
+    #     return [rule_left,build_parse_tree(sentence, i, s-1, rule_left, bp_dict)],
+    #             [rule_right, sentence[j]]
+    # else:
+    return [rule_left,build_parse_tree(sentence, i, s, rule_left, bp_dict)],\
+           [rule_right,build_parse_tree(sentence, s + 1, j, rule_right, bp_dict)]
+
+
+
 
 if __name__ == "__main__":
     start =time.time()
     para_dict = calculate_parameter()
+    # print para_dict
     frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
     s = ['', 'I', 'love', "'em", 'both', '.']
     for i in range(1, len(s)):
@@ -193,7 +216,13 @@ if __name__ == "__main__":
     memo_pi_dict = init_memo_dict(n, para_dict)
     memo_bp_dict = copy.deepcopy(memo_pi_dict)
     prob = pi(1, n, 'S', s, para_dict, memo_pi_dict, memo_bp_dict)
-    print prob
+    tree = ['']
+    if memo_pi_dict[1][n]['S'] != 0:
+        tree= ['S', build_parse_tree(s, 1, n, 'S', memo_bp_dict)]
+
+    print 'tree:', tree
+    # print memo_pi_dict[1][n]['S']
+    # print memo_bp_dict[1][n]['S']
 
 
 
