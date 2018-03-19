@@ -10,7 +10,9 @@ import numpy as np
 import math
 import copy
 import itertools
+import re
 import time
+import json
 
 def create_frequent_word_list_from_training_file(count_file):
     """
@@ -107,18 +109,14 @@ def create_sentence_iterator(corpus_file):
             yield line
             l = f.readline()
 
-def cky_algorithm(sentence, parameters):
-    n = len(sentence) - 1
-    base_case_pi = {}
-
-    for l in range(1, n):
-        for i in range(1, n - l + 1):
-            j = i + l
-            for x in parameters:
-                if x != 'S':
-                    pass
-
 def init_memo_dict(n, parameters):
+    """
+    initialize memoization dictionary for dynamic programming,
+    all values are initialized to -1
+    :param n: length of a sentence
+    :param parameters: parameters of a PCFG, which is probability of each rule
+    :return: a dictionary in format of {i:{j:{x: -1}}}
+    """
     memo_dict = {}
     for i in range(1, n):
         memo_dict[i] = {}
@@ -189,50 +187,81 @@ def build_parse_tree(sentence, i, j, x, bp_dict):
     rule_right = bp[1].split()[1]
     return [rule_left,build_parse_tree(sentence, i, s, rule_left, bp_dict)],\
            [rule_right,build_parse_tree(sentence, s + 1, j, rule_right, bp_dict)]
+    # return {rule_left: build_parse_tree(sentence, i, s, rule_left, bp_dict)},\
+    #         {rule_right: build_parse_tree(sentence, s + 1, j, rule_right, bp_dict)}
+
+def parse_corpus():
+    para_dict = calculate_parameter()
+    frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
+    sentense_iterator = create_sentence_iterator('parse_dev.dat')
+    newf = open('dev_my_trees.dat', 'w+')
+    total_s = 0
+    total_not_s = 0
+    for s in sentense_iterator:
+        total_s += 1
+        n = len(s) - 1
+        for i in range(1, n + 1):
+            if s[i] not in frequent_words:
+                s[i] = '_RARE_'
+        memo_pi_dict = init_memo_dict(n, para_dict)
+        memo_bp_dict = copy.deepcopy(memo_pi_dict)
+        x = 'S'
+        prob = pi(1, n, x, s, para_dict, memo_pi_dict, memo_bp_dict)
+        if prob == 0.0:
+            max_pi = -1.0
+            for key in memo_pi_dict[1][n]:
+                pi_x = memo_pi_dict[1][n][key]
+                if pi_x > max_pi:
+                    max_pi = pi_x
+                    x = key
+        tree = str([x, build_parse_tree(s, 1, n, x, memo_bp_dict)])
+        tree = re.sub(r"(?<!\')(\(|\))(?!\')", "", tree)
+        tree = re.sub("'", "\"", tree)
+        newf.write(tree + '\n')
+        total_not_s += 1
+        # print prob
+    newf.close()
 
 if __name__ == "__main__":
     start =time.time()
-    para_dict = calculate_parameter()
-    # print para_dict
-    frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
-    s = ['', 'I', 'love', "'em", 'both', '.']
-    for i in range(1, len(s)):
-        if s[i] not in frequent_words:
-            s[i] = '_RARE_'
-    print s
-    n = len(s) - 1
-    prob = -2.0
-    memo_pi_dict = init_memo_dict(n, para_dict)
-    memo_bp_dict = copy.deepcopy(memo_pi_dict)
-    prob = pi(1, n, 'S', s, para_dict, memo_pi_dict, memo_bp_dict)
-    tree = ['']
-    if memo_pi_dict[1][n]['S'] != 0:
-        tree= ['S', build_parse_tree(s, 1, n, 'S', memo_bp_dict)]
-
-    print 'tree:', tree
+    # para_dict = calculate_parameter()
+    # # print para_dict
+    # frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
+    # s = ['', 'I', 'love', "'em", 'both', '.']
+    # for i in range(1, len(s)):
+    #     if s[i] not in frequent_words:
+    #         s[i] = '_RARE_'
+    # print s
+    # n = len(s) - 1
+    # prob = -2.0
+    # memo_pi_dict = init_memo_dict(n, para_dict)
+    # memo_bp_dict = copy.deepcopy(memo_pi_dict)
+    # prob = pi(1, n, 'S', s, para_dict, memo_pi_dict, memo_bp_dict)
+    # tree = ['']
+    # if memo_pi_dict[1][n]['S'] != 0:
+    #     tree= str(['S', build_parse_tree(s, 1, n, 'S', memo_bp_dict)])
+    #     tree = re.sub(r"(?<!\')(\(|\))(?!\')", "", tree)
+    #     tree = re.sub("'", "\"", tree)
+    #     # s = json.loads(tree)
+    #     # print s[1][1]
+    #     # re.match(r"\d(\d)?:\d\d(.\d+)?$", w)
+    # else:
+    #     max_pi = -1.0
+    #     x = 'X'
+    #     for key in memo_pi_dict[1][n]:
+    #         pi_value = memo_pi_dict[1][n][key]
+    #         if pi_value > max_pi:
+    #             max_pi = pi_value
+    #             x = key
+    #     tree = [x, build_parse_tree(s, 1, n, x, memo_bp_dict)]
+    #
+    # print 'tree:', tree
     # print memo_pi_dict[1][n]['S']
     # print memo_bp_dict[1][n]['S']
 
+    parse_corpus()
 
-
-    # sentense_iterator = create_sentence_iterator('parse_dev.dat')
-    # total_s = 0
-    # total_not_s = 0
-    # for s in sentense_iterator:
-    #     total_s += 1
-    #     n = len(s) - 1
-    #     for i in range(1, n + 1):
-    #         if s[i] not in frequent_words:
-    #             s[i] = '_RARE_'
-    #     memo_dict = init_memo_dict(n, para_dict)
-    #     prob = pi(1, n, 'S', s, para_dict, memo_dict)
-    #     if prob == 0.0:
-    #         prob = max([pi(1, n, x, s, para_dict, memo_dict) for x in para_dict.keys()])
-    #         total_not_s += 1
-    #     # print prob
-    # print "total_s:", total_s
-    # print 'total_not_s', total_not_s
-    # end = time.time()
-    # print "running time %r s" % (end-start)
+    end = time.time()
+    print "running time %r s" % (end-start)
 
 
