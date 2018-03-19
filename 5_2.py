@@ -187,19 +187,8 @@ def build_parse_tree(sentence, i, j, x, bp_dict):
     s = bp[0]
     rule_left = bp[1].split()[0]
     rule_right = bp[1].split()[1]
-    # if s == i:
-    #     return [rule_left, sentence[i]],\
-    #            [rule_right, build_parse_tree(sentence, s+1, j, rule_right, bp_dict)]
-    #
-    # elif s == j:
-    #     return [rule_left,build_parse_tree(sentence, i, s-1, rule_left, bp_dict)],
-    #             [rule_right, sentence[j]]
-    # else:
     return [rule_left,build_parse_tree(sentence, i, s, rule_left, bp_dict)],\
            [rule_right,build_parse_tree(sentence, s + 1, j, rule_right, bp_dict)]
-
-
-
 
 if __name__ == "__main__":
     start =time.time()
