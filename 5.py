@@ -5,7 +5,7 @@ Impement CKY algorithm
 __author__="Zongkai Tian <zt2218@columbia.edu>"
 __date__ ="Mar 19, 2018"
 
-import os
+import sys, os
 import numpy as np
 import math
 import copy
@@ -80,6 +80,11 @@ def build_rule_count_dict(counts_iterator):
     return rule_count_dict
 
 def build_para_dict(rule_count_dict):
+    """
+    build a dictionary with probability of each rule
+    :param rule_count_dict: a dictionary with count of each rule
+    :return: {X: {w: 0.12, y1y2: 0.13}}
+    """
     para_dict = copy.deepcopy(rule_count_dict)
     for key in para_dict:
         deno = sum(para_dict[key].values())
@@ -91,11 +96,6 @@ def calculate_parameter():
     counts_iterator = create_counts_iterator(file('cfg_rare.counts'))
     rule_count_dic = build_rule_count_dict(counts_iterator)
     para_dict = build_para_dict(rule_count_dic)
-    # for key in para_dict:
-    #     # print para_dict[key].values()
-    #     total = sum(para_dict[key].values())
-    #     if total <0.99999999:
-    #         print key, total
     return para_dict
 
 def create_sentence_iterator(corpus_file):
@@ -213,11 +213,11 @@ def pretty_print_tree(tree):
   format_tree(tree)
   # print pprint.pformat(tree)
 
-def parse_corpus():
+def parse_corpus(dev_file, prediction_file):
     para_dict = calculate_parameter()
     frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
-    sentense_iterator = create_sentence_iterator('parse_dev.dat')
-    newf = open('dev_my_trees.dat', 'w+')
+    sentense_iterator = create_sentence_iterator(dev_file)
+    newf = open(prediction_file, 'w+')
     total_s = 0
     total_not_s = 0
     for s in sentense_iterator:
@@ -284,8 +284,13 @@ def testing():
 
 if __name__ == "__main__":
     start =time.time()
+
+    rare_file = sys.argv[1]
+    dev_file = sys.argv[2]
+    prediction_file = sys.argv[3]
+    os.system("python count_cfg_freq.py " + rare_file + " > cfg_rare.counts")
     # testing()
-    parse_corpus()
+    parse_corpus(dev_file, prediction_file)
     line_num = 0
     with open("dev_my_trees.dat") as f:
         l = f.readline()

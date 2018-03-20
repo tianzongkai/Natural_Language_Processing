@@ -7,7 +7,7 @@ then execute
 python count_cfg_freq.py parse_train_rare.dat > cfg_rare.counts
 to generate new count file
 """
-import os
+import sys, os
 import numpy as np
 import json
 import types
@@ -45,7 +45,7 @@ def create_rare_word_list_from_training_file(count_file):
     print 'rare words appear %r times' % total_rare
     return rare_words
 
-def edit_training_file():
+def edit_training_file(train_file, rare_file):
     """
     replace rare words with '_RARE_'
     :return:
@@ -67,12 +67,18 @@ def edit_training_file():
                         tree[idx] = '_RARE_'
         return tree
 
-    newf = open('parse_train_rare.dat', 'w+')
-    with open("parse_train.dat") as f:
+    newf = open(rare_file, 'w+')
+    with open(train_file) as f:
         for line in f:
             tree = json.loads(line)
             modified_tree = modify_leaf(tree)
             newf.write(str(json.dumps(modified_tree)) + '\n')
     newf.close()
 # edit_training_file()
-create_rare_word_list_from_training_file("cfg.counts")
+
+
+if __name__ == "__main__":
+    train_file = sys.argv[1]
+    rare_file = sys.argv[2]
+    os.system("python count_cfg_freq.py " + train_file + " > cfg.counts")
+    edit_training_file(train_file, rare_file)
