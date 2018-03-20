@@ -14,38 +14,6 @@ import re
 import time
 import json, pprint
 
-def create_frequent_word_list_from_training_file(count_file):
-    """
-    read count file and return a list of rare words
-    :param count_file: files created by run command line:
-            python count cfg freqs.py parse train.dat > cfg.counts
-    :return: a list of unique rare words
-    """
-    lines = []
-    with open(count_file) as f:
-        for line in f:
-            thisline = line.split()
-            if thisline[1] == 'UNARYRULE':
-                lines.append(thisline[0])  # count
-                lines.append(thisline[3])  # word
-                lines.append(thisline[2])  # Part-of-speech tag
-
-    word_counts = np.asarray(lines)
-    word_counts = np.reshape(word_counts, (-1, 3)) # [count, word, tag]
-    counts = word_counts[:,0].astype('int')
-    #print counts
-    words = word_counts[:, 1]
-    frequent_words = []
-    total_rare = 0
-    for w in words:
-        word_count = np.sum(counts[words[:] == w])
-        #if w == 'Medical' :print 'medical counts', word_count
-        if word_count >= 5 and w not in frequent_words:
-            # total_rare += word_count
-            frequent_words.append(w)
-    # print 'rare words appear %r times' % total_rare
-    return frequent_words
-
 def create_counts_iterator(count_file):
     """
     :param count_file: count file
@@ -70,10 +38,6 @@ def build_rule_count_dict(counts_iterator):
         if l[1] != 'NONTERMINAL':
             x = l[2]
             y = l[1] == 'UNARYRULE' and l[3] or l[3] + ' ' + l[4]
-            # if l[1] == 'UNARYRULE':
-            #     y = l[3]
-            # else: # l[1] == 'BINARYRULE'
-            #     y = l[3] + ' ' + l[4]
             if x not in rule_count_dict:
                 rule_count_dict[x] = {}
             rule_count_dict[x][y] = int(l[0])
@@ -98,13 +62,45 @@ def calculate_parameter():
     para_dict = build_para_dict(rule_count_dic)
     return para_dict
 
+def create_frequent_word_list_from_training_file(count_file):
+    """
+    read original count file and return a list of frequent words
+    :param count_file: files created by run command line:
+            python count_cfg_freqs.py parse_train.dat > cfg.counts
+    :return: a list of unique frequent words
+    """
+    lines = []
+    with open(count_file) as f:
+        for line in f:
+            thisline = line.split()
+            if thisline[1] == 'UNARYRULE':
+                lines.append(thisline[0])  # count
+                lines.append(thisline[3])  # word
+                lines.append(thisline[2])  # Part-of-speech tag
+
+    word_counts = np.asarray(lines)
+    word_counts = np.reshape(word_counts, (-1, 3)) # [count, word, tag]
+    counts = word_counts[:,0].astype('int')
+    #print counts
+    words = word_counts[:, 1]
+    frequent_words = []
+    total_rare = 0
+    for w in words:
+        word_count = np.sum(counts[words[:] == w])
+        if word_count >= 5 and w not in frequent_words:
+            frequent_words.append(w)
+    # print 'rare words appear %r times' % total_rare
+    return frequent_words
+
 def create_sentence_iterator(corpus_file):
     with open(corpus_file) as f:
         l = f.readline()
         while l:
-            line = l.split() #turn a string of sentence into a list
+            # turn a string of sentence into a list
+            line = l.split()
+
             # add a place holder at index 0 to let the sentence starts
-            # at index 1, so it can match subscript in the sudo-code
+            # at index 1, so it can match subscripts in algorithm sudo-code
             line.insert(0, '')
             yield line
             l = f.readline()
@@ -131,10 +127,12 @@ def pi(i, j, x, sentence, parameters, memo_pi_dict, memo_bp_dict):
     implementation of PCFG algorithm
     :param i: start index
     :param j: end index
-    :param x: non-terminals for left-hand side of rule
-    :param sentence: a sentence to parse
+    :param x: non-terminals in left-hand side of rule
+    :param sentence: a sentence to parse, in format of list
     :param parameters: q(X -> Y1Y2) and q(x -> w), probability of each rule
-    :param memo_pi_dict: lookup dictionary for calculated pi values; {i: {j: {X: prob}}}
+    :param memo_pi_dict: lookup dictionary for calculated pi values; {i: {j: {X: pi}}}
+    :param memo_bp_dict: backpointer dictionary of argmax s, Y1Y2;
+            {i: {j: {X: [s, [Y1, Y2]]}}}
     :return: pi value for the given input
     """
     # print 'i, j, x: ', i, j, x
@@ -188,31 +186,6 @@ def build_parse_tree(sentence, i, j, x, bp_dict):
     return [rule_left,build_parse_tree(sentence, i, s, rule_left, bp_dict)],\
            [rule_right,build_parse_tree(sentence, s + 1, j, rule_right, bp_dict)]
 
-class Node:
-  """
-  Dummy class for python's pretty printer.
-  """
-  def __init__(self, name): self.name = name
-  def __repr__(self): return self.name
-
-def format_tree(tree):
-  """
-  Convert a tree with strings, to one with nodes.
-  """
-  tree[0] = Node(tree[0])
-  if len(tree) == 2:
-    tree[1] = Node(tree[1])
-  elif len(tree) == 3:
-    format_tree(tree[1])
-    format_tree(tree[2])
-
-def pretty_print_tree(tree):
-  """
-  Print out a tree with nice formatting.
-  """
-  format_tree(tree)
-  # print pprint.pformat(tree)
-
 def parse_corpus(dev_file, prediction_file):
     para_dict = calculate_parameter()
     frequent_words = create_frequent_word_list_from_training_file("cfg.counts")
@@ -226,8 +199,8 @@ def parse_corpus(dev_file, prediction_file):
         for i in range(1, n + 1):
             if s[i] not in frequent_words:
                 s[i] = '_RARE_'
-        memo_pi_dict = init_memo_dict(n, para_dict)
-        memo_bp_dict = copy.deepcopy(memo_pi_dict)
+        memo_pi_dict = init_memo_dict(n, para_dict) # memoization for pi value
+        memo_bp_dict = copy.deepcopy(memo_pi_dict)  # memoization for backpointer
         x = 'S'
         prob = pi(1, n, x, s, para_dict, memo_pi_dict, memo_bp_dict)
         if prob == 0.0:
@@ -263,7 +236,7 @@ def testing():
     memo_pi_dict = init_memo_dict(n, para_dict)
     memo_bp_dict = copy.deepcopy(memo_pi_dict)
     prob = pi(1, n, 'S', s, para_dict, memo_pi_dict, memo_bp_dict)
-    print 'prob,', prob
+    # print 'prob,', prob
     tree = ['']
     if memo_pi_dict[1][n]['S'] != 0:
         tree= str(['S', build_parse_tree(s, 1, n, 'S', memo_bp_dict)])
@@ -282,24 +255,58 @@ def testing():
         tree = [x, build_parse_tree(s, 1, n, x, memo_bp_dict)]
     print 'tree:', tree
 
+class Node:
+  """
+  Dummy class for python's pretty printer.
+  """
+  def __init__(self, name): self.name = name
+  def __repr__(self): return self.name
+
+def format_tree(tree):
+  """
+  Convert a tree with strings, to one with nodes.
+  """
+  tree[0] = Node(tree[0])
+  if len(tree) == 2:
+    tree[1] = Node(tree[1])
+  elif len(tree) == 3:
+    format_tree(tree[1])
+    format_tree(tree[2])
+
+def pretty_print_tree(tree):
+  """
+  Print out a tree with nice formatting.
+  """
+  format_tree(tree)
+  print pprint.pformat(tree)
+
+
 if __name__ == "__main__":
-    start =time.time()
+    # start =time.time()
 
     rare_file = sys.argv[1]
     dev_file = sys.argv[2]
     prediction_file = sys.argv[3]
+    # rare_file = "parse_train.RARE.dat"
+    # dev_file = "parse_dev.dat"
+    # prediction_file ="q5_prediction_file"
+    # print rare_file
+    # print dev_file
+    # print prediction_file
+
     os.system("python count_cfg_freq.py " + rare_file + " > cfg_rare.counts")
     # testing()
     parse_corpus(dev_file, prediction_file)
-    line_num = 0
-    with open("dev_my_trees.dat") as f:
-        l = f.readline()
-        while l:
-            line_num += 1
-            print '--------------------\nline_num:', line_num
-            pretty_print_tree(json.loads(l))
-            l = f.readline()
-    end = time.time()
-    print "running time %r s" % (end-start)
+    # end = time.time()
+    # print "running time %r s" % (end-start)
+
+    # line_num = 0
+    # with open(prediction_file) as f:
+    #     l = f.readline()
+    #     while l:
+    #         line_num += 1
+    #         print 'line num:', line_num
+    #         pretty_print_tree(json.loads(l))
+    #         l = f.readline()
 
 

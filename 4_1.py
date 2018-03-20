@@ -42,7 +42,7 @@ def create_rare_word_list_from_training_file(count_file):
         if word_sum < 5 and w not in rare_words:
             total_rare += word_sum
             rare_words.append(w)
-    print 'rare words appear %r times' % total_rare
+    # print 'rare words appear %r times' % total_rare
     return rare_words
 
 def edit_training_file(train_file, rare_file):
