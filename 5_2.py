@@ -187,8 +187,31 @@ def build_parse_tree(sentence, i, j, x, bp_dict):
     rule_right = bp[1].split()[1]
     return [rule_left,build_parse_tree(sentence, i, s, rule_left, bp_dict)],\
            [rule_right,build_parse_tree(sentence, s + 1, j, rule_right, bp_dict)]
-    # return {rule_left: build_parse_tree(sentence, i, s, rule_left, bp_dict)},\
-    #         {rule_right: build_parse_tree(sentence, s + 1, j, rule_right, bp_dict)}
+
+class Node:
+  """
+  Dummy class for python's pretty printer.
+  """
+  def __init__(self, name): self.name = name
+  def __repr__(self): return self.name
+
+def format_tree(tree):
+  """
+  Convert a tree with strings, to one with nodes.
+  """
+  tree[0] = Node(tree[0])
+  if len(tree) == 2:
+    tree[1] = Node(tree[1])
+  elif len(tree) == 3:
+    format_tree(tree[1])
+    format_tree(tree[2])
+
+def pretty_print_tree(tree):
+  """
+  Print out a tree with nice formatting.
+  """
+  format_tree(tree)
+  # print pprint.pformat(tree)
 
 def parse_corpus():
     para_dict = calculate_parameter()
@@ -217,6 +240,9 @@ def parse_corpus():
         tree = str([x, build_parse_tree(s, 1, n, x, memo_bp_dict)])
         tree = re.sub(r"(?<!\')(\(|\))(?!\')", "", tree)
         tree = re.sub("'", "\"", tree)
+        tree = re.sub("\"\"\"\"", "\"''\"", tree)
+        tree = re.sub("\"\"", "\"'", tree)
+        tree = re.sub("n\"t", "n't", tree)
         newf.write(tree + '\n')
         total_not_s += 1
         # print prob
@@ -256,36 +282,18 @@ def testing():
         tree = [x, build_parse_tree(s, 1, n, x, memo_bp_dict)]
     print 'tree:', tree
 
-
-class Node:
-  """
-  Dummy class for python's pretty printer.
-  """
-  def __init__(self, name): self.name = name
-  def __repr__(self): return self.name
-
-def format_tree(tree):
-  """
-  Convert a tree with strings, to one with nodes.
-  """
-  tree[0] = Node(tree[0])
-  if len(tree) == 2:
-    tree[1] = Node(tree[1])
-  elif len(tree) == 3:
-    format_tree(tree[1])
-    format_tree(tree[2])
-
-def pretty_print_tree(tree):
-  """
-  Print out a tree with nice formatting.
-  """
-  format_tree(tree)
-  print pprint.pformat(tree)
-
 if __name__ == "__main__":
     start =time.time()
     # testing()
     parse_corpus()
+    line_num = 0
+    with open("dev_my_trees.dat") as f:
+        l = f.readline()
+        while l:
+            line_num += 1
+            print '--------------------\nline_num:', line_num
+            pretty_print_tree(json.loads(l))
+            l = f.readline()
     end = time.time()
     print "running time %r s" % (end-start)
 
