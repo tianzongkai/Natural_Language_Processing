@@ -280,7 +280,6 @@ def pretty_print_tree(tree):
   format_tree(tree)
   print pprint.pformat(tree)
 
-
 if __name__ == "__main__":
     # start =time.time()
 
@@ -294,7 +293,6 @@ if __name__ == "__main__":
     # print dev_file
     # print prediction_file
 
-    os.system("python count_cfg_freq.py " + rare_file + " > cfg_rare.counts")
     # testing()
     parse_corpus(dev_file, prediction_file)
     # end = time.time()

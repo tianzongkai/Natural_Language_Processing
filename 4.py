@@ -80,5 +80,4 @@ def edit_training_file(train_file, rare_file):
 if __name__ == "__main__":
     train_file = sys.argv[1]
     rare_file = sys.argv[2]
-    os.system("python count_cfg_freq.py " + train_file + " > cfg.counts")
     edit_training_file(train_file, rare_file)
