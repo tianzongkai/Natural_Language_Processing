@@ -138,22 +138,23 @@ def pi(i, j, x, sentence, parameters, memo_pi_dict, memo_bp_dict):
     # print 'i, j, x: ', i, j, x
     # print memo_dict
     if i == j:
-        w = sentence[i]
-        if x in parameters and w in parameters[x]:
+        w = sentence[i] # get the word at index i of input sentence
+        if x in parameters and w in parameters[x]: # if unary rule (x -> w) exists
             # print '11: ', parameters[x][w]
             # print w, x
             return parameters[x][w]
-        else:
+        else:  # if unary rule (x -> w) doesn't exist
             # print '22'
             return 0.0
     else:
-        if memo_pi_dict[i][j][x] >= 0:
+        if memo_pi_dict[i][j][x] >= 0:  # if value of pi(i,j,x) has been calculated
             # print '33: ', memo_dict[i][j][x]
             return memo_pi_dict[i][j][x]
-        else:
+        else:   # if value of pi(i,j,x) has not been calculated
             # print '44'
+
             # list of righ-hand side of binary & unary rules
-            # binary rules are in the format of 'Y1 Y2'
+            # binary rules are in the format of string 'Y1 Y2' (exclude quotation marks)
             rules = parameters[x].keys()
             binary_rules = filter(lambda x: len(x.split()) == 2, rules) # Y1, Y2
             # print binary_rules
@@ -170,7 +171,7 @@ def pi(i, j, x, sentence, parameters, memo_pi_dict, memo_bp_dict):
                 memo_pi_dict[i][j][x] = np.amax(sub_pi_matrix)
                 argmax_idx = np.argmax(sub_pi_matrix) # index of max value in flatten sub_pi matrix
                 argmax_s = i + argmax_idx % (j - i)   # value of s to get max value of pi
-                argmax_r = binary_rules[argmax_idx / (j - i)] # get the rule that gives max value of pi
+                argmax_r = binary_rules[argmax_idx / (j - i)] # get Y1 Y2 that gives max value of pi
                 memo_bp_dict[i][j][x] = [argmax_s, argmax_r]
                 # print i, argmax_s, j, argmax_r
             # print 'memo of %r, %r, %r: %r' % (i, j, x, memo_dict[i][j][x])
