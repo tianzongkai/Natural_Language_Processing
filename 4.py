@@ -1,4 +1,5 @@
-#! /usr/bin/python
+#!/usr/local/bin/python2.7
+
 """
 replace low-frequency words in training file with '_RARE_'
 and generate new training file - 'parse_train_rare.dat'

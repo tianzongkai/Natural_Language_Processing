@@ -166,7 +166,7 @@ def pi(i, j, x, sentence, parameters, memo_pi_dict, memo_bp_dict):
                       * pi(s + 1, j, r.split()[1], sentence, parameters, memo_pi_dict, memo_bp_dict)
                       for s in range(i, j)]
                      for r in binary_rules]
-                )
+                ) # shape [len(binary_rules), (j-i)]
                 memo_pi_dict[i][j][x] = np.amax(sub_pi_matrix)
                 argmax_idx = np.argmax(sub_pi_matrix) # index of max value in flatten sub_pi matrix
                 argmax_s = i + argmax_idx % (j - i)   # value of s to get max value of pi

@@ -79,7 +79,8 @@ def main(key_file, prediction_file):
                nt_total_test.get(nt, 0))
   print
   output_row("total", right, total_gold, total_test)
-    
+  # (name, total_gold, p, r, (2 * p * r) / float(p + r))
+
 
 def usage():
     sys.stderr.write("""
